@@ -1,39 +1,26 @@
-import express, { response } from "express"
-import * as redis from "redis"
+import dotenv from "dotenv";
+import * as redis from "redis";
+import { createApp } from "./app";
 
-const PORT= 4000;
-const LIST_KEY="messages";
+dotenv.config({ path: "./.env" });
 
-const createApp = async()=>{
-
-    const app = express()
-
-    const client = redis.createClient({url:"redis://localhost:6379"});
-    await client.connect()
-
-    app. use(express.json())
-
-    app.get("/", (request, response)=>{
-        response.status(200).send("hello from express");
-    })
-
-    app.post("/messages",async (request, response)=>{
-        const {message} = request.body;
-        await client.lPush(LIST_KEY, message);
-        response.status(200).send("Message added to list");
-    })
-
-    app.get('/messages', async(request, response)=>{
-        const messages= await client.lRange(LIST_KEY, 0, -1);
-        response.status(200).send(messages);
-    })
-
-    return app;
-}
+const PORT = parseInt(process.env.PORT || "", 10); 
+const REDIS_URL = process.env.REDIS_URL || "";
 
 
-createApp().then((app)=>{
-    app.listen(PORT,()=>{
-        console.log(`start on ${PORT}port`)
-    })
-})
+if(!PORT) throw new Error("PORT is required")
+if(!REDIS_URL) throw new Error("REDIS_URL is required")
+
+const startServer = async () => {
+
+    const client = redis.createClient({ url: REDIS_URL });
+
+    await client.connect();
+    const app = createApp(client);
+
+    app.listen(PORT, () => {
+      console.log(`Server started on port ${PORT}`);
+    });
+};
+
+startServer();
