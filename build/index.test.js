@@ -35,22 +35,40 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const dotenv_1 = __importDefault(require("dotenv"));
-const redis = __importStar(require("redis"));
+const supertest_1 = __importDefault(require("supertest"));
 const app_1 = require("./app");
-dotenv_1.default.config({ path: "./.env" });
-const PORT = parseInt(process.env.PORT || "", 10);
-const REDIS_URL = process.env.REDIS_URL || "";
-if (!PORT)
-    throw new Error("PORT is required");
-if (!REDIS_URL)
-    throw new Error("REDIS_URL is required");
-const startServer = () => __awaiter(void 0, void 0, void 0, function* () {
-    const client = redis.createClient({ url: REDIS_URL });
+const redis = __importStar(require("redis"));
+let app;
+let client;
+beforeAll(() => __awaiter(void 0, void 0, void 0, function* () {
+    client = redis.createClient({ url: "redis://localhost:6379" });
     yield client.connect();
-    const app = (0, app_1.createApp)(client);
-    app.listen(PORT, () => {
-        console.log(`Server started on port ${PORT}`);
-    });
+    app = yield (0, app_1.createApp)(client);
+}));
+beforeEach(() => __awaiter(void 0, void 0, void 0, function* () {
+    yield client.flushDb();
+}));
+afterAll(() => __awaiter(void 0, void 0, void 0, function* () {
+    yield client.flushDb();
+    yield client.quit();
+}));
+beforeEach(() => __awaiter(void 0, void 0, void 0, function* () { }));
+describe("POST /messages", () => {
+    it("responds with a success message", () => __awaiter(void 0, void 0, void 0, function* () {
+        const response = yield (0, supertest_1.default)(app)
+            .post("/messages")
+            .send({ message: "testing with redis" });
+        // HTTP 상태 코드 검증
+        expect(response.statusCode).toBe(200);
+        // 응답 메시지 검증
+        expect(response.text).toBe("Message added to list");
+    }));
 });
-startServer();
+describe("GET /messages", () => {
+    it("responds with all messages", () => __awaiter(void 0, void 0, void 0, function* () {
+        yield client.lPush(app_1.LIST_KEY, ["msg1", "msg2"]);
+        const response = yield (0, supertest_1.default)(app).get("/messages");
+        expect(response.statusCode).toBe(200);
+        expect(response.body).toEqual(["msg2", "msg1"]);
+    }));
+});
