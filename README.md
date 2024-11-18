@@ -25,7 +25,7 @@ redis-server --port 6379
 
 Redis 서버를 실행한 후, Redis 클라이언트로 접속하여 연결 확인:
 ```bash
-redis-cli -p 6380
+redis-cli -p 6379
 auth test_env
 ping
 ```
