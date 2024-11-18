@@ -40,19 +40,22 @@ const app_1 = require("./app");
 const redis = __importStar(require("redis"));
 let app;
 let client;
+// 올바른 Redis URL 설정
+const REDIS_URL = "redis://default:test_env@localhost:6380";
 beforeAll(() => __awaiter(void 0, void 0, void 0, function* () {
-    client = redis.createClient({ url: "redis://localhost:6379" });
+    client = redis.createClient({ url: REDIS_URL });
     yield client.connect();
     app = yield (0, app_1.createApp)(client);
 }));
 beforeEach(() => __awaiter(void 0, void 0, void 0, function* () {
+    // 테스트 데이터 초기화
     yield client.flushDb();
 }));
 afterAll(() => __awaiter(void 0, void 0, void 0, function* () {
+    // Redis 데이터 초기화 및 연결 종료
     yield client.flushDb();
     yield client.quit();
 }));
-beforeEach(() => __awaiter(void 0, void 0, void 0, function* () { }));
 describe("POST /messages", () => {
     it("responds with a success message", () => __awaiter(void 0, void 0, void 0, function* () {
         const response = yield (0, supertest_1.default)(app)
@@ -66,9 +69,12 @@ describe("POST /messages", () => {
 });
 describe("GET /messages", () => {
     it("responds with all messages", () => __awaiter(void 0, void 0, void 0, function* () {
+        // Redis에 테스트 데이터 추가
         yield client.lPush(app_1.LIST_KEY, ["msg1", "msg2"]);
+        // GET 요청 테스트
         const response = yield (0, supertest_1.default)(app).get("/messages");
         expect(response.statusCode).toBe(200);
+        // Redis에 저장된 메시지가 올바르게 반환되는지 확인
         expect(response.body).toEqual(["msg2", "msg1"]);
     }));
 });
